@@ -1,0 +1,24 @@
+{
+  "name": "deployhub",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@deployhub/api",
+    "dev:worker": "npm run dev --workspace=@deployhub/worker",
+    "dev:web": "npm run dev --workspace=@deployhub/web",
+    "dev": "concurrently --kill-others-on-fail -n \"api,worker,web\" -c \"cyan,magenta,green\" \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:web\"",
+    "build": "npm run build --workspaces",
+    "test:m4": "ts-node scripts/test-milestone4.ts",
+    "test:m35": "ts-node scripts/test-milestone3-5.ts",
+    "test:m3": "ts-node scripts/test-milestone3.ts",
+    "test:m2": "ts-node scripts/test-milestone2.ts",
+    "test:matrix": "ts-node scripts/test-matrix.ts",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,123 @@
+version: '3.9'
+
+services:
+  # ─── MongoDB ─────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: deployhub-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: deployhub
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: deployhub-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: deployhub-prometheus
+    restart: unless-stopped
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # ─── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: deployhub-grafana
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./infrastructure/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infrastructure/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=deployhub
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    depends_on:
+      - prometheus
+
+  # ─── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: deployhub-api
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/deployhub
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-deployhub-change-this-secret}
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Worker ──────────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./apps/worker
+      dockerfile: Dockerfile
+    container_name: deployhub-worker
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
+      - /tmp/deployhub:/tmp/deployhub               # Shared temp for cloned repos
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/deployhub
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
