@@ -62,13 +62,16 @@ jobs:
       - name: Build and push API
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/api
+          context: .
+          file: ./apps/api/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/deployhub-api:latest
 
       - name: Build and push Worker
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/worker
+          context: .
+          file: ./apps/worker/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/deployhub-worker:latest
+
