@@ -34,6 +34,11 @@ api.interceptors.response.use(
   }
 );
 
+// ─── Health ───────────────────────────────────────────────────────────────────
+export const healthApi = {
+  check: () => api.get('/health').then((r) => r.data),
+};
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   register: (username: string, email: string) =>

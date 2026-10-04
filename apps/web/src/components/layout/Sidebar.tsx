@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { authApi } from '../../services/api';
+import { authApi, healthApi } from '../../services/api';
 import type { User } from '@deployhub/shared';
 import {
   Boxes,
@@ -20,13 +20,17 @@ export function Sidebar() {
   const [apiOnline, setApiOnline] = useState(true);
 
   useEffect(() => {
+    // Check actual API server health
+    healthApi
+      .check()
+      .then(() => setApiOnline(true))
+      .catch(() => setApiOnline(false));
+
+    // Fetch user profile
     authApi
       .me()
-      .then((u) => {
-        setUser(u);
-        setApiOnline(true);
-      })
-      .catch(() => setApiOnline(false));
+      .then((u) => setUser(u))
+      .catch(() => setUser(null));
   }, []);
 
   function logout() {
