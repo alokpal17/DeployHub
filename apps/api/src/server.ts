@@ -42,6 +42,22 @@ app.get('/metrics', async (_req, res) => {
   }
 });
 
+// ─── Root Status Endpoint ───────────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'DeployHub API',
+    status: 'online',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      metrics: '/metrics',
+      auth: '/api/auth/login',
+      projects: '/api/projects'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api', routes);
 
