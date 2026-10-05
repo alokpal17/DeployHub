@@ -131,7 +131,7 @@ export function AccountModal({ isOpen, onClose, user, onLogout }: AccountModalPr
             </div>
           </div>
 
-          {/* GitHub Integration Status */}
+          {/* GitHub Integration Status & Actions */}
           <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -152,6 +152,50 @@ export function AccountModal({ isOpen, onClose, user, onLogout }: AccountModalPr
               >
                 {loadingGh ? 'Checking...' : ghStatus.connected ? `Connected (@${ghStatus.username})` : 'Not Connected'}
               </span>
+            </div>
+
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+              {ghStatus.connected ? (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-slate-400">Active GitHub Token configured</span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await githubApi.disconnect();
+                        setGhStatus({ connected: false });
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                    className="px-3 py-1 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all"
+                  >
+                    Disconnect GitHub
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-slate-400">Connect account to list repositories</span>
+                  <button
+                    onClick={async () => {
+                      const input = prompt('Enter GitHub PAT (or type "demo" for instant testing):', 'demo');
+                      if (input && input.trim()) {
+                        setLoadingGh(true);
+                        try {
+                          const res = await githubApi.connect(input.trim());
+                          setGhStatus(res);
+                        } catch (err: any) {
+                          alert(err.response?.data?.error || err.message || 'Failed to connect GitHub');
+                        } finally {
+                          setLoadingGh(false);
+                        }
+                      }
+                    }}
+                    className="px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all"
+                  >
+                    Connect Account
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

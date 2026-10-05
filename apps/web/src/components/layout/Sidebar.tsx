@@ -12,6 +12,7 @@ import {
   User as UserIcon,
   Settings,
 } from 'lucide-react';
+import { Github } from '../ui/Icons';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Projects', icon: Boxes },
@@ -132,8 +133,16 @@ export function Sidebar() {
               onClick={() => setShowAccountModal(true)}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-all text-left"
             >
+              <Github className="w-4 h-4 text-indigo-400" />
+              <span>GitHub &amp; Repositories</span>
+            </button>
+
+            <button
+              onClick={() => setShowAccountModal(true)}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-all text-left"
+            >
               <UserIcon className="w-4 h-4 text-indigo-400" />
-              <span>Account & Settings</span>
+              <span>Account &amp; Settings</span>
             </button>
           </nav>
         </div>

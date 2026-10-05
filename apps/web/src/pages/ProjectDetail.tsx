@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { projectsApi, deploymentsApi, envApi } from '../services/api';
 import type { Project, Deployment, EnvVar, ContainerResourceStats } from '@deployhub/shared';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -44,11 +44,13 @@ const LIVE_STATUSES = new Set(['QUEUED', 'BUILDING', 'DEPLOYING', 'HEALTH_CHECKI
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [selected, setSelected] = useState<Deployment | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'console' | 'history' | 'env' | 'resources' | 'settings'>('console');
+  const [deleting, setDeleting] = useState(false);
 
   // Action states
   const [triggering, setTriggering] = useState(false);
@@ -379,6 +381,21 @@ export default function ProjectDetail() {
       setTimeout(() => setSettingsSuccessMsg(''), 3000);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to rotate secret');
+    }
+  }
+
+  // Delete project
+  async function handleDeleteProject() {
+    if (!id || !project) return;
+    if (!confirm(`Are you sure you want to permanently delete "${project.name}" and all associated deployments & logs? This action cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      await projectsApi.delete(id);
+      navigate('/dashboard');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete project');
+      setDeleting(false);
     }
   }
 
@@ -1570,6 +1587,36 @@ export default function ProjectDetail() {
                   <li>Select <strong>Just the push event</strong> and click <strong>Add webhook</strong></li>
                 </ol>
               </div>
+            </div>
+          </div>
+
+          {/* Danger Zone: Delete Project */}
+          <div className="glass-card rounded-3xl p-6 md:p-8 border border-rose-500/30 bg-rose-950/10 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Danger Zone</h2>
+                <p className="text-xs text-slate-400">Permanently remove this project, container instances, build history, and environment variables.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-rose-500/20">
+              <div className="text-xs text-slate-400">
+                <p className="font-semibold text-slate-300">Delete this project</p>
+                <p className="text-[11px] text-slate-500">Once deleted, your active container will be stopped and deleted permanently.</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                disabled={deleting}
+                className="px-4 py-2.5 bg-rose-600/90 hover:bg-rose-600 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-2 shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{deleting ? 'Deleting Project...' : 'Delete Entire Project'}</span>
+              </button>
             </div>
           </div>
         </div>
