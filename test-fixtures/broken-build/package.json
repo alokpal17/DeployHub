@@ -1,0 +1,10 @@
+{
+  "name": "broken-build-app",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node -e \"console.error('SYNTAX ERROR: Compilation failed at line 42'); process.exit(1)\""
+  },
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}

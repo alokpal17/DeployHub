@@ -1,0 +1,8 @@
+{
+  "name": "verbose-build-app",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js",
+    "start": "node -e \"const http=require('http');http.createServer((req,res)=>res.end('ok')).listen(process.env.PORT||3000)\""
+  }
+}

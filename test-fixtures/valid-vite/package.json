@@ -1,0 +1,10 @@
+{
+  "name": "valid-vite-spa",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "vite": "^5.0.0"
+  }
+}
