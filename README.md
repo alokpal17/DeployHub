@@ -49,6 +49,10 @@ DeployHub transforms arbitrary Git repositories into isolated, running Docker co
 
 ## ✨ Key Features
 
+- 🔍 **Universal Repository Detection**: Automatically classifies arbitrary repositories into Vite frontends, Node backends (Express, Fastify, NestJS, Hono), fullstack apps, Python ML/web jobs, multi-service Docker Compose, or monorepos with nested candidate selection.
+- 📦 **Docker Compose Multi-Service Support**: Automatically parses `docker-compose.yml`, discovers nested Dockerfiles, isolates container names per deployment (`deployhub-<project_id>`), binds dynamic host ports, and injects runtime configuration.
+- 🛡️ **Environment Preflight & Secret Masking**: Discovers required secrets via `.env.example`, blocks container launch if mandatory variables are missing, and masks credentials in build logs and Docker runs.
+- ⚡ **Deterministic Package Manager Toolchains**: Enforces frozen lockfile strategies (`npm ci`, `pnpm --frozen-lockfile`, `yarn --frozen-lockfile`, `bun --frozen-lockfile`) based on lockfile presence without non-deterministic fallback chains.
 - 🔄 **Zero-Downtime Releases**: Deploys the new release in an isolated sandbox, verifies HTTP readiness probes, switches proxy traffic atomically, and only then retires the old container.
 - 🛡️ **Failure Non-Disruption Guarantee**: If a new deployment fails build or health checks, the currently active deployment continues serving 100% of user traffic without interruption.
 - ⚡ **One-Click Instant Rollback**: Reverts to any previous healthy release in seconds by reusing the existing immutable Docker image artifact without cloning git or rebuilding.
@@ -427,7 +431,8 @@ The [RecoveryService](file:///c:/Users/palal/Downloads/deployhub-starter/apps/wo
 
 - **Multi-Tenant Isolation**: Strict ownership checks at the API controller layer prevent tenants from accessing or rolling back unauthorized projects.
 - **HMAC Signature Verification**: GitHub webhooks are verified using timing-safe raw buffer comparisons against project-specific secrets.
-- **Secret Redaction**: Environment variables marked as secrets are automatically masked (`[HIDDEN]`) in build logs and Docker run invocations.
+- **Automated Secret Scanning Guardrail**: Built-in repository scanner (`npm run scan:secrets`) prevents credential-shaped connection strings, cloud URIs, and private keys from entering version control.
+- **Secret Redaction & Log Sanitization**: Environment variables marked as secrets and credential connection strings are automatically masked (`[HIDDEN_SECRET]`, `[HIDDEN_TOKEN]`) in build logs, runtime diagnostics, and Docker run invocations.
 - **Command Injection Prevention**: Repository URLs, branch names, and environment keys are strictly validated with regex (`/^[A-Za-z_][A-Za-z0-9_]*$/`) and executed without shell interpolation (`shell: false`).
 - **Cardinality Management**: Metric labels are cleaned from the Prometheus registry upon project deletion to prevent unbounded memory growth.
 
@@ -435,36 +440,56 @@ The [RecoveryService](file:///c:/Users/palal/Downloads/deployhub-starter/apps/wo
 
 ## 🧪 Testing & Verification Suites
 
-DeployHub includes comprehensive automated runtime test suites:
+DeployHub includes comprehensive automated runtime test suites covering end-to-end repository detection, Docker Compose isolation, secret protection, zero-downtime cutover, and telemetry:
 
-### Run All Test Suites
+### Run Verification Test Suites
 
 ```bash
-# Milestone 4: Release Management, Zero-Downtime & Rollbacks (21 Tests)
-npx ts-node --transpile-only scripts/test-milestone4.ts
+# 1. Repository-Wide Secret Pattern Scanner (100 Files)
+npm run scan:secrets
 
-# Milestone 3.5: Port Leasing, Cleanup, Indexes & Metrics (11 Tests)
-npx ts-node --transpile-only scripts/test-milestone3-5.ts
+# 2. Universal Repository Detection & Classification (102 Tests)
+npm run test:detector
 
-# Milestone 3: Webhooks, Branch Filtering & Timings (13 Tests)
-npx ts-node --transpile-only scripts/test-milestone3.ts
+# 3. Environment Discovery, Required Secrets Preflight & Redaction (12 Tests)
+npm run test:compose:preflight
 
-# Milestone 2: Developer Workflow, Env Vars & Secrets (13 Tests)
-npx ts-node --transpile-only scripts/test-milestone2.ts
+# 4. Docker Compose Multi-Deployment Isolation & Zero-Downtime (6 Tests)
+npm run test:compose:isolation
 
-# Multi-Framework Build & Runtime Matrix (10 Tests)
-npx ts-node --transpile-only scripts/test-matrix.ts
+# 5. Docker Compose & Framework Detector (15 Tests)
+npm run test:compose
+
+# 6. Milestone 4: Release Management, Zero-Downtime & Rollbacks (21 Tests)
+npm run test:m4
+
+# 7. Milestone 3.5: Port Leasing, Cleanup, Indexes & Metrics (11 Tests)
+npm run test:m35
+
+# 8. Milestone 3: Webhooks, Branch Filtering & Timings (13 Tests)
+npm run test:m3
+
+# 9. Milestone 2: Developer Workflow, Env Vars & Secrets (13 Tests)
+npm run test:m2
+
+# 10. Multi-Framework Build & Runtime Matrix (10 Tests)
+npm run test:matrix
 ```
 
 ### Verification Results Summary
 
-| Test Suite | Total Tests | Pass Rate | Status |
-| :--- | :---: | :---: | :---: |
-| **Milestone 4 (Releases, Zero-Downtime, Rollbacks, Telemetry)** | 21 / 21 | 100% | ✅ PASS |
-| **Milestone 3.5 (Distributed Leases, Deduplication, Hardening)** | 11 / 11 | 100% | ✅ PASS |
-| **Milestone 3 (Webhooks, Push Automation, Timings)** | 13 / 13 | 100% | ✅ PASS |
-| **Milestone 2 (Developer Workflow, Env Vars, Secrets)** | 13 / 13 | 100% | ✅ PASS |
-| **Multi-Framework Matrix (Express, Vite, Dockerfile, Fallbacks)** | 10 / 10 | 100% | ✅ PASS |
+| Test Suite | Total Tests / Files | Pass Rate | Status | Key Validations |
+| :--- | :---: | :---: | :---: | :--- |
+| **Secret Scanning Guardrail** | 100 / 100 files | 100% | ✅ PASS | Zero credential-shaped strings, Atlas URIs, or private keys |
+| **Universal Repository Detector** | 102 / 102 | 100% | ✅ PASS | Vite, Node backends, fullstack, Python ML/web, monorepos, toolchains |
+| **Compose Environment Preflight** | 12 / 12 | 100% | ✅ PASS | Required secret discovery, preflight blocking, log masking |
+| **Compose Isolation & Zero-Downtime** | 6 / 6 | 100% | ✅ PASS | Multi-tenant Compose isolation, identical `container_name` safety |
+| **Compose & Framework Detector** | 15 / 15 | 100% | ✅ PASS | Multi-service Compose YAML parsing, nested Dockerfile resolution |
+| **Milestone 4 Engine** | 21 / 21 | 100% | ✅ PASS | Zero-downtime traffic cutover, rollback, SSE log stream, telemetry |
+| **Milestone 3.5 Engine** | 11 / 11 | 100% | ✅ PASS | Distributed Redis port leases, stale deployment reconciliation |
+| **Milestone 3 Engine** | 13 / 13 | 100% | ✅ PASS | HMAC webhooks, automated builds, branch filters, deployment timings |
+| **Milestone 2 Engine** | 13 / 13 | 100% | ✅ PASS | Auth, projects, encrypted env vars, and secret masking |
+| **Multi-Framework Matrix** | 10 / 10 | 100% | ✅ PASS | Express API, Vite SPA dist serving, startup crash diagnostics |
 
 ---
 
