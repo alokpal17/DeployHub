@@ -37,6 +37,10 @@ import {
   Cpu,
   HardDrive,
   Radio,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  Bug,
 } from 'lucide-react';
 import { Github } from '../components/ui/Icons';
 
@@ -62,6 +66,9 @@ export default function ProjectDetail() {
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
   const [sseConnected, setSseConnected] = useState(false);
+  const [showStackTrace, setShowStackTrace] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
+  const [copiedStackTrace, setCopiedStackTrace] = useState(false);
 
   // Resource stats
   const [resourceStats, setResourceStats] = useState<ContainerResourceStats | null>(null);
@@ -241,11 +248,11 @@ export default function ProjectDetail() {
   }, [selected?._id, selected?.status, id]);
 
   // Trigger new deployment / redeploy
-  async function handleRedeploy() {
+  async function handleRedeploy(servicePath?: string) {
     if (!id) return;
     setTriggering(true);
     try {
-      const { deployment } = await deploymentsApi.trigger(id);
+      const { deployment } = await deploymentsApi.trigger(id, undefined, 'MANUAL', servicePath);
       setDeployments((prev) => [deployment, ...prev]);
       setSelected(deployment);
       setLogs([]);
@@ -255,6 +262,10 @@ export default function ProjectDetail() {
     } finally {
       setTriggering(false);
     }
+  }
+
+  async function handleDeployService(servicePath: string) {
+    await handleRedeploy(servicePath);
   }
 
   // Rollback to specific deployment
@@ -581,7 +592,7 @@ export default function ProjectDetail() {
             )}
 
             <button
-              onClick={handleRedeploy}
+              onClick={() => handleRedeploy()}
               disabled={triggering || rollingBack}
               className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white text-xs font-semibold px-5 py-2.5 rounded-2xl shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all active:scale-95 shrink-0"
             >
@@ -927,16 +938,205 @@ export default function ProjectDetail() {
                   </div>
                 )}
 
-                {/* Error Banner */}
-                {selected.status === 'FAILED' && selected.error && (
-                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-3">
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-semibold text-rose-200">Deployment Error</p>
-                      <p className="font-mono text-[11px] text-rose-300/90">{selected.error}</p>
+                {/* Universal Repository Classification Card */}
+                {selected.detection && (
+                  <div className="glass-card rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-slate-200 font-mono text-xs font-bold">
+                        <Layers className="w-4 h-4 text-indigo-400" />
+                        <span>Universal Application Classification</span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                        Mode: {selected.detection.deploymentMode?.toUpperCase() || 'WEB'}
+                      </span>
                     </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Type</span>
+                        <span className="text-white font-bold">{selected.detection.type}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Framework</span>
+                        <span className="text-indigo-300 font-bold">{selected.detection.framework || 'Generic'}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Runtime</span>
+                        <span className="text-slate-300">{selected.detection.runtime || 'Container'}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Target Port</span>
+                        <span className="text-emerald-400 font-bold">
+                          {(selected.detection.deploymentMode === 'multi-service' || selected.detection.type === 'monorepo') && !selected.servicePath
+                            ? '— (Select service)'
+                            : selected.detection.deploymentMode === 'job'
+                            ? '— (Job/Script)'
+                            : (selected.detection.detectedPorts && selected.detection.detectedPorts.length > 0 ? selected.detection.detectedPorts.join(', ') : selected.detection.internalPort || 3000)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Multi-service Monorepo Candidates */}
+                    {selected.detection.candidates && selected.detection.candidates.length > 0 && (
+                      <div className="pt-2 border-t border-white/5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-slate-300 font-bold block">
+                            Multiple applications detected ({selected.detection.candidates.length}):
+                          </span>
+                          <span className="text-[10px] text-indigo-400 font-mono">Select a service to build &amp; deploy</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {selected.detection.candidates.map((cand, idx) => (
+                            <div key={idx} className="p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 flex items-center justify-between text-xs font-mono transition-colors">
+                              <div className="space-y-0.5">
+                                <span className="font-bold text-white block">{cand.name}/</span>
+                                <span className="text-[10px] text-slate-400 block">{cand.framework || cand.type}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeployService(cand.path)}
+                                disabled={triggering}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1 shrink-0"
+                              >
+                                <span>Deploy {cand.name}</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evidence Accordion */}
+                    {selected.detection.evidence && selected.detection.evidence.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          onClick={() => setShowEvidence(!showEvidence)}
+                          className="text-[11px] text-indigo-400 hover:text-indigo-300 font-mono flex items-center gap-1 transition-colors"
+                        >
+                          {showEvidence ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          <span>{showEvidence ? 'Hide Classification Evidence' : `View Classification Evidence (${selected.detection.evidence.length})`}</span>
+                        </button>
+                        {showEvidence && (
+                          <div className="mt-2 p-3 rounded-xl bg-black/60 border border-white/5 space-y-1 font-mono text-[11px] text-slate-300">
+                            {selected.detection.evidence.map((ev, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <span className="text-emerald-400">✓</span>
+                                <span>{ev}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* Structured Runtime Diagnostics Banner */}
+                {selected.status === 'FAILED' && selected.diagnostics ? (
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs space-y-3 shadow-xl shadow-rose-950/30">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Bug className="w-5 h-5 text-rose-400 shrink-0" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-rose-200 text-sm">Runtime Startup Diagnostic</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-950 text-rose-300 border border-rose-500/40">
+                              {selected.diagnostics.classification}
+                            </span>
+                            {selected.diagnostics.exitCode !== undefined && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black/40 text-slate-400 border border-white/10">
+                                Exit Code {selected.diagnostics.exitCode}
+                              </span>
+                            )}
+                            {selected.diagnostics.oomKilled && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                OOM Killed
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {selected.diagnostics.failureType === 'MISSING_ENV_VAR' && (
+                        <button
+                          onClick={() => setActiveTab('env')}
+                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shrink-0 transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
+                        >
+                          <span>Configure Environment</span>
+                          <span>➔</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-black/40 border border-rose-500/20 font-mono text-[11px] text-rose-200">
+                      <span className="text-slate-400 block mb-0.5 font-bold">Root Cause:</span>
+                      {selected.diagnostics.rootCauseMessage}
+                    </div>
+
+                    {selected.diagnostics.suggestedFix && (
+                      <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-indigo-200 font-mono text-[11px] flex items-start gap-2">
+                        <span className="text-indigo-400 font-bold">💡 Fix:</span>
+                        <span>{selected.diagnostics.suggestedFix}</span>
+                      </div>
+                    )}
+
+                    {selected.diagnostics.stackTrace && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => setShowStackTrace(!showStackTrace)}
+                            className="text-[11px] text-rose-300 hover:text-rose-100 font-mono flex items-center gap-1 transition-colors"
+                          >
+                            {showStackTrace ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            <span>{showStackTrace ? 'Hide Exception Stack Trace' : 'View Exception Stack Trace'}</span>
+                          </button>
+                          {showStackTrace && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(selected.diagnostics?.stackTrace || '');
+                                setCopiedStackTrace(true);
+                                setTimeout(() => setCopiedStackTrace(false), 2000);
+                              }}
+                              className="text-[10px] font-mono text-slate-400 hover:text-white flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/5"
+                            >
+                              {copiedStackTrace ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedStackTrace ? 'Copied' : 'Copy Trace'}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {showStackTrace && (
+                          <pre className="p-3.5 rounded-xl bg-[#090b10] border border-rose-500/30 text-rose-300 font-mono text-[11px] overflow-x-auto max-h-60 leading-relaxed whitespace-pre-wrap">
+                            {selected.diagnostics.stackTrace}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : selected.status === 'FAILED' && selected.error ? (
+                  /* Fallback Generic Error Banner */
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-rose-950/20">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-rose-200">
+                          {selected.error.includes('Environment configuration required')
+                            ? '⚠️ Environment Configuration Required'
+                            : 'Deployment Error'}
+                        </p>
+                        <p className="font-mono text-[11px] text-rose-300/90 leading-relaxed">{selected.error}</p>
+                      </div>
+                    </div>
+                    {selected.error.includes('Environment configuration required') && (
+                      <button
+                        onClick={() => setActiveTab('env')}
+                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shrink-0 transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1.5 self-start sm:self-auto"
+                      >
+                        <span>Configure Environment</span>
+                        <span>➔</span>
+                      </button>
+                    )}
+                  </div>
+                ) : null}
 
                 {/* Terminal Logs */}
                 <LogViewer logs={logs} isLive={isLive} />
@@ -959,7 +1159,7 @@ export default function ProjectDetail() {
               Release &amp; Deployment History
             </h2>
             <button
-              onClick={handleRedeploy}
+              onClick={() => handleRedeploy()}
               disabled={triggering || rollingBack}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all shadow-md shadow-indigo-600/30"
             >

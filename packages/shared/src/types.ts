@@ -19,20 +19,146 @@ export type DeploymentTrigger =
   | 'ROLLBACK';
 
 export type ProjectType =
-  | 'static-html'
-  | 'nodejs-spa'
-  | 'nodejs-backend'
+  | 'docker-compose'
+  | 'docker'
   | 'dockerfile'
+  | 'node-frontend'
+  | 'nodejs-spa'
+  | 'node-backend'
+  | 'nodejs-backend'
+  | 'node-fullstack'
+  | 'python-web'
+  | 'python-job'
+  | 'python-ml'
+  | 'java'
+  | 'go'
+  | 'static'
+  | 'static-html'
+  | 'monorepo'
   | 'unknown';
+
+export type DeploymentMode =
+  | 'web'
+  | 'service'
+  | 'job'
+  | 'static'
+  | 'multi-service'
+  | 'unsupported'
+  | 'ambiguous';
+
+export interface ComposeServiceBuildInfo {
+  context?: string;
+  dockerfile?: string;
+  args?: Record<string, string>;
+  target?: string;
+}
+
+export interface ComposeServiceInfo {
+  name: string;
+  image?: string;
+  build?: ComposeServiceBuildInfo;
+  ports?: string[];
+  environment?: Record<string, string>;
+  envFile?: string[];
+  dependsOn?: string[];
+  healthcheck?: any;
+  resolvedDockerfile?: string;
+}
+
+export interface DetectedEnvVar {
+  key: string;
+  defaultValue?: string;
+  isSecret: boolean;
+  isRequired: boolean;
+  service?: string;
+  description?: string;
+  source: 'compose' | 'env_file' | 'example_file' | 'dockerfile' | 'readme' | 'source_code';
+}
+
+export interface ComposeDetectionInfo {
+  composeFile: string;
+  services: ComposeServiceInfo[];
+  detectedEnvVars?: DetectedEnvVar[];
+  missingRequiredEnvVars?: string[];
+  primaryService?: string;
+  primaryPort?: number;
+  internalPort?: number;
+}
+
+export interface ServiceCandidate {
+  name: string;
+  path: string;
+  type: ProjectType;
+  framework?: string;
+  runtime?: string;
+  deploymentMode: DeploymentMode;
+  entrypoint?: string;
+  buildCommand?: string;
+  startCommand?: string;
+  outputDirectory?: string;
+  packageManager?: string;
+  installCommand?: string;
+  hasLockfile?: boolean;
+  buildContext?: string;
+  dockerfilePath?: string;
+  detectedPorts?: number[];
+  detectedEnvVars?: DetectedEnvVar[];
+  evidence: string[];
+}
+
+export type StartupFailureType =
+  | 'MISSING_ENV_VAR'
+  | 'PORT_BIND_FAILURE'
+  | 'MISSING_DEPENDENCY'
+  | 'DATABASE_FAILURE'
+  | 'PERMISSION_FAILURE'
+  | 'OOM_KILLED'
+  | 'SYNTAX_ERROR'
+  | 'RUNTIME_TOOLCHAIN_MISSING'
+  | 'DEPLOYMENT_CONFIGURATION_ERROR'
+  | 'APPLICATION_CRASH'
+  | 'UNKNOWN';
+
+export interface RuntimeDiagnosticResult {
+  failureType: StartupFailureType;
+  classification: string;
+  exitCode?: number;
+  oomKilled?: boolean;
+  rawError?: string;
+  stackTrace?: string;
+  rootCauseMessage: string;
+  suggestedFix?: string;
+  tailLogs: string[];
+}
 
 export interface ProjectDetectionResult {
   type: ProjectType;
   framework?: string;
+  runtime?: string;
+  deploymentMode?: DeploymentMode;
+  rootPath?: string;
+  servicePath?: string;
+  buildContext?: string;
+  outputDirectory?: string;
+  confidence?: number;
+  entrypoint?: string;
   internalPort: number;
+  detectedPorts?: number[];
   buildCommand?: string;
   startCommand?: string;
   mainFile?: string;
+  packageManager?: string;
+  installCommand?: string;
+  hasLockfile?: boolean;
+  dependencyFile?: string;
   hasDockerfile: boolean;
+  dockerfilePath?: string;
+  composeInfo?: ComposeDetectionInfo;
+  candidates?: ServiceCandidate[];
+  detectedEnvVars?: DetectedEnvVar[];
+  missingRequiredEnvVars?: string[];
+  evidence?: string[];
+  diagnostics?: string[];
 }
 
 // ─── Environment Variables ────────────────────────────────────────────────────
@@ -160,6 +286,10 @@ export interface Deployment {
   lastHeartbeatAt?: Date;
   durationMs?: number;
   timings?: DeploymentTimings;
+  deploymentMode?: DeploymentMode;
+  servicePath?: string;
+  diagnostics?: RuntimeDiagnosticResult;
+  detection?: ProjectDetectionResult;
 }
 
 // ─── API Payloads ─────────────────────────────────────────────────────────────
@@ -189,6 +319,7 @@ export interface TriggerDeploymentPayload {
   projectId: string;
   commitHash?: string;
   trigger?: DeploymentTrigger;
+  servicePath?: string;
 }
 
 export interface RollbackPayload {
@@ -203,6 +334,7 @@ export interface DeployJobData {
   branch: string;
   commitHash?: string;
   trigger?: DeploymentTrigger;
+  servicePath?: string;
   envVars?: Record<string, string>;
   queuedAt?: string;
   isRollback?: boolean;

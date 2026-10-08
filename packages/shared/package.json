@@ -9,7 +9,8 @@
     "./models": "./src/models/index.ts"
   },
   "dependencies": {
-    "mongoose": "^8.0.3"
+    "mongoose": "^8.0.3",
+    "yaml": "^2.9.1"
   },
   "scripts": {
     "build": "echo shared built"

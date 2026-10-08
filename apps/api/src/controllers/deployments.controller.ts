@@ -135,6 +135,7 @@ export async function triggerDeployment(req: AuthRequest, res: Response): Promis
     }
 
     const targetBranch = req.body.branch || project.productionBranch || project.branch || 'main';
+    const targetServicePath = req.body.servicePath || undefined;
 
     // Create deployment record first
     const deployment = await DeploymentModel.create({
@@ -142,6 +143,7 @@ export async function triggerDeployment(req: AuthRequest, res: Response): Promis
       status: 'QUEUED',
       trigger: req.body.trigger || 'MANUAL',
       commitHash: req.body.commitHash || '',
+      servicePath: targetServicePath || '',
       queuedAt: new Date(),
     });
 
@@ -155,13 +157,14 @@ export async function triggerDeployment(req: AuthRequest, res: Response): Promis
         branch: targetBranch,
         commitHash: req.body.commitHash,
         trigger: (req.body.trigger as any) || 'MANUAL',
+        servicePath: targetServicePath,
         envVars: envVarsMap,
         queuedAt: new Date().toISOString(),
       },
       { jobId: deployment._id.toString() }
     );
 
-    console.log(`📦 Manual Deployment ${deployment._id} queued for project ${project.name}`);
+    console.log(`📦 Manual Deployment ${deployment._id} queued for project ${project.name}${targetServicePath ? ` (service: ${targetServicePath})` : ''}`);
 
     res.status(202).json({
       success: true,
@@ -187,7 +190,7 @@ export async function redeploy(req: AuthRequest, res: Response): Promise<void> {
       return;
     }
 
-    const { project } = authData;
+    const { deployment: prevDep, project } = authData;
 
     // Convert latest project envVars to key-value record
     const envVarsMap: Record<string, string> = {};
@@ -200,6 +203,7 @@ export async function redeploy(req: AuthRequest, res: Response): Promise<void> {
     }
 
     const targetBranch = project.productionBranch || project.branch || 'main';
+    const targetServicePath = req.body.servicePath || prevDep.servicePath || undefined;
 
     // Create a NEW deployment record (never mutate old deployment)
     const newDeployment = await DeploymentModel.create({
@@ -207,6 +211,7 @@ export async function redeploy(req: AuthRequest, res: Response): Promise<void> {
       status: 'QUEUED',
       trigger: 'RETRY',
       commitHash: req.body.commitHash || '',
+      servicePath: targetServicePath || '',
       queuedAt: new Date(),
     });
 
@@ -219,6 +224,7 @@ export async function redeploy(req: AuthRequest, res: Response): Promise<void> {
         branch: targetBranch,
         commitHash: req.body.commitHash,
         trigger: 'RETRY',
+        servicePath: targetServicePath,
         envVars: envVarsMap,
         queuedAt: new Date().toISOString(),
       },

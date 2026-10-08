@@ -53,11 +53,12 @@ const SAMPLE_REPOS = [
 ];
 
 const FRAMEWORK_OPTIONS = [
-  { id: '', label: '⚡ Auto-Detect Framework', desc: 'DeployHub analyzes package.json / Dockerfile' },
+  { id: '', label: '⚡ Auto-Detect Framework', desc: 'DeployHub analyzes compose / Dockerfile / package.json' },
+  { id: 'docker-compose', label: 'Docker Compose', desc: 'Multi-service compose (docker-compose.yml)' },
+  { id: 'dockerfile', label: 'Custom Dockerfile', desc: 'Build using repository Dockerfile' },
   { id: 'nodejs-backend', label: 'Node.js Backend / API', desc: 'Express, Fastify, Nest, Hono' },
   { id: 'nodejs-spa', label: 'Single Page App (SPA)', desc: 'React, Vue, Vite, Svelte, Angular' },
   { id: 'static-html', label: 'Static HTML / Web', desc: 'HTML5, CSS, vanilla JS' },
-  { id: 'dockerfile', label: 'Custom Dockerfile', desc: 'Build using repository Dockerfile' },
 ];
 
 export default function Dashboard() {

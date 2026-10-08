@@ -44,22 +44,34 @@ export class PortManager {
   /**
    * Checks if a given TCP port is available to bind at OS level.
    */
-  static isTcpPortFree(port: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const server = net.createServer();
+  static async isTcpPortFree(port: number): Promise<boolean> {
+    const testBind = (host: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        const server = net.createServer();
+        server.unref();
 
-      server.once('error', () => {
-        resolve(false);
-      });
-
-      server.once('listening', () => {
-        server.close(() => {
-          resolve(true);
+        server.once('error', () => {
+          resolve(false);
         });
-      });
 
-      server.listen({ port, host: '0.0.0.0', exclusive: true });
-    });
+        server.once('listening', () => {
+          server.close(() => {
+            resolve(true);
+          });
+        });
+
+        try {
+          server.listen({ port, host, exclusive: true });
+        } catch {
+          resolve(false);
+        }
+      });
+    };
+
+    const free0 = await testBind('0.0.0.0');
+    if (!free0) return false;
+    const free127 = await testBind('127.0.0.1');
+    return free127;
   }
 
   /**

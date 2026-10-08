@@ -150,6 +150,10 @@ export interface DeploymentDoc extends Document {
   finishedAt?: Date;
   lastHeartbeatAt?: Date;
   timings?: DeploymentTimings;
+  deploymentMode?: string;
+  servicePath?: string;
+  diagnostics?: any;
+  detection?: any;
 }
 
 export const TimingsSchema = new Schema(
@@ -194,6 +198,8 @@ export const DeploymentSchema = new Schema<DeploymentDoc>({
   commitAuthor: { type: String, default: '' },
   commitMessage: { type: String, default: '' },
   projectType: { type: String, default: '' },
+  deploymentMode: { type: String, default: 'web' },
+  servicePath: { type: String, default: '' },
   imageName: { type: String, default: '' },
   containerId: { type: String, default: '' },
   containerPort: { type: Number, default: 0 },
@@ -220,6 +226,8 @@ export const DeploymentSchema = new Schema<DeploymentDoc>({
   finishedAt: { type: Date },
   lastHeartbeatAt: { type: Date, default: Date.now },
   timings: { type: TimingsSchema, default: () => ({}) },
+  diagnostics: { type: Schema.Types.Mixed },
+  detection: { type: Schema.Types.Mixed },
 });
 
 // Compound indexes for DeployHub query patterns

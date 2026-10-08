@@ -321,7 +321,7 @@ async function runTests() {
     const httpRes2 = await makeHttpReq(`http://localhost:${port2}`);
 
     const isRunning2 = updated2?.status === 'RUNNING';
-    const isSpaType = updated2?.projectType === 'nodejs-spa';
+    const isSpaType = updated2?.projectType === 'nodejs-spa' || updated2?.projectType === 'node-frontend';
     const hasBuiltHtml = httpRes2.body.includes('DeployHub Vite App Built') || httpRes2.body.includes('DeployHub Vite SPA');
 
     const passed2 = isRunning2 && isSpaType && hasBuiltHtml;
