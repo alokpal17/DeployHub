@@ -552,7 +552,7 @@ CMD ["npm", "start"]
         }
         if (hasInternalPostgres && !userEnv.DATABASE_URL) {
           const pgSvcName = Object.keys(parsedDoc.services).find((s) => /postgres/i.test(s)) || 'postgres';
-          sCfg.environment.DATABASE_URL = `postgres://postgres:postgres@${pgSvcName}:5432/${projectId || 'app'}`;
+          sCfg.environment.DATABASE_URL = `postgres://postgres@${pgSvcName}:5432/${projectId || 'app'}`;
         }
       } else if (Array.isArray(sCfg.environment)) {
         for (const [k, v] of Object.entries(userEnv)) {

@@ -274,7 +274,7 @@ export class ComposeParser {
       // If Postgres is internal in compose, DATABASE_URL / POSTGRES_URL is not missing
       if (hasInternalPostgres && (envVar.key === 'DATABASE_URL' || envVar.key === 'POSTGRES_URL')) {
         envVar.isRequired = false;
-        envVar.defaultValue = envVar.defaultValue || 'postgres://postgres:postgres@postgres:5432';
+        envVar.defaultValue = envVar.defaultValue || 'postgres://postgres@postgres:5432/app';
         continue;
       }
 

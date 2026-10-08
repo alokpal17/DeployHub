@@ -215,26 +215,32 @@ services:
   // ─────────────────────────────────────────────────────────────────────────────
   total++;
   try {
+    const testSecretVal = process.env.TEST_SECRET_VAL || 'TEST_ONLY_PLACEHOLDER_KEY';
+    const testCloudSecret = process.env.TEST_CLOUD_SECRET || 'TEST_ONLY_CLOUD_SECRET';
+    const testBearerToken = 'TEST_ONLY_BEARER_TOKEN_VALUE';
+    const testUser = 'admin_user';
+
+    const testMongoUriWithAuth = `mongodb://${testUser}:${testSecretVal}@127.0.0.1:27017/testdb`;
     const sensitiveEnv = {
-      MONGODB_URI: 'mongodb+srv://admin_user:SuperSecretP@ssword123@cluster0.abc.mongodb.net/testdb',
-      ACCESS_TOKEN_SECRET: 'jwt_super_secret_token_key_xyz987',
-      CLOUDINARY_API_SECRET: 'cloud_secret_abc123',
+      MONGODB_URI: testMongoUriWithAuth,
+      ACCESS_TOKEN_SECRET: testSecretVal,
+      CLOUDINARY_API_SECRET: testCloudSecret,
     };
 
-    const rawLog1 = 'Connecting to MongoDB at mongodb+srv://admin_user:SuperSecretP@ssword123@cluster0.abc.mongodb.net/testdb ...';
-    const rawLog2 = 'Loaded ACCESS_TOKEN_SECRET: jwt_super_secret_token_key_xyz987 successfully.';
-    const rawLog3 = 'CLOUDINARY_API_SECRET=cloud_secret_abc123 passed in process environment.';
-    const rawLog4 = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz.123';
+    const rawLog1 = `Connecting to MongoDB at ${testMongoUriWithAuth} ...`;
+    const rawLog2 = `Loaded ACCESS_TOKEN_SECRET: ${testSecretVal} successfully.`;
+    const rawLog3 = `CLOUDINARY_API_SECRET=${testCloudSecret} passed in process environment.`;
+    const rawLog4 = `Authorization: Bearer ${testBearerToken}`;
 
     const masked1 = DockerService.maskSecrets(rawLog1, sensitiveEnv);
     const masked2 = DockerService.maskSecrets(rawLog2, sensitiveEnv);
     const masked3 = DockerService.maskSecrets(rawLog3, sensitiveEnv);
     const masked4 = DockerService.maskSecrets(rawLog4, sensitiveEnv);
 
-    const safe1 = !masked1.includes('SuperSecretP@ssword123') && (masked1.includes('[HIDDEN]') || masked1.includes('[HIDDEN_SECRET]'));
-    const safe2 = !masked2.includes('jwt_super_secret_token_key_xyz987') && (masked2.includes('[HIDDEN_SECRET]') || masked2.includes('[HIDDEN]'));
-    const safe3 = !masked3.includes('cloud_secret_abc123') && (masked3.includes('[HIDDEN]') || masked3.includes('[HIDDEN_SECRET]'));
-    const safe4 = !masked4.includes('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz.123') && masked4.includes('[HIDDEN_TOKEN]');
+    const safe1 = !masked1.includes(testSecretVal) && (masked1.includes('[HIDDEN]') || masked1.includes('[HIDDEN_SECRET]'));
+    const safe2 = !masked2.includes(testSecretVal) && (masked2.includes('[HIDDEN_SECRET]') || masked2.includes('[HIDDEN]'));
+    const safe3 = !masked3.includes(testCloudSecret) && (masked3.includes('[HIDDEN]') || masked3.includes('[HIDDEN_SECRET]'));
+    const safe4 = !masked4.includes(testBearerToken) && masked4.includes('[HIDDEN_TOKEN]');
 
     if (safe1 && safe2 && safe3 && safe4) {
       passed++;
@@ -281,8 +287,8 @@ services:
     await fs.writeFile(path.join(t6Dir, 'FRONTEND', 'Dockerfile'), `FROM alpine:latest\nCMD ["echo", "frontend"]`);
 
     const userSuppliedEnv = {
-      MONGODB_URI: 'mongodb+srv://user:pass@cluster.mongodb.net/testdb',
-      ACCESS_TOKEN_SECRET: 'token_secret_123',
+      MONGODB_URI: process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb',
+      ACCESS_TOKEN_SECRET: process.env.TEST_ACCESS_TOKEN_SECRET || 'TEST_ONLY_ACCESS_TOKEN',
       VITE_API_BASE_URL: 'http://localhost:8000/api/v1',
     };
 
@@ -304,8 +310,8 @@ services:
     const backendEnvContent = await fs.readFile(path.join(t6Dir, 'BACKEND', '.env'), 'utf8');
     const rootEnvContent = await fs.readFile(path.join(t6Dir, '.env'), 'utf8');
 
-    const hasInjectedBackend = backendEnvContent.includes('MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/testdb');
-    const hasInjectedRoot = rootEnvContent.includes('ACCESS_TOKEN_SECRET=token_secret_123');
+    const hasInjectedBackend = backendEnvContent.includes(`MONGODB_URI=${userSuppliedEnv.MONGODB_URI}`);
+    const hasInjectedRoot = rootEnvContent.includes(`ACCESS_TOKEN_SECRET=${userSuppliedEnv.ACCESS_TOKEN_SECRET}`);
     const hasStrippedContainerName = !preparedContent.includes('container_name:');
     const hasPrimaryPort = preparedContent.includes(`${hostPort}:80`);
 
@@ -350,22 +356,25 @@ services:
     await fs.writeFile(path.join(t7Dir, 'api', 'Dockerfile'), `FROM alpine:latest\nCMD ["echo", "api"]`);
     await fs.writeFile(path.join(t7Dir, 'web', 'Dockerfile'), `FROM alpine:latest\nCMD ["echo", "web"]`);
 
+    const testApiKey = process.env.TEST_API_KEY || 'TEST_ONLY_API_KEY';
+    const testApiEndpoint = 'http://localhost:8000';
+
     const detection = await ProjectDetector.detect(t7Dir, {
-      API_KEY: 'secret_api_val',
-      NEXT_PUBLIC_API: 'https://api.mycorp.internal',
+      API_KEY: testApiKey,
+      NEXT_PUBLIC_API: testApiEndpoint,
     });
 
     const { preparedComposeFile } = await DockerService.prepareComposeEnvironment(
       t7Dir,
       detection,
-      { API_KEY: 'secret_api_val', NEXT_PUBLIC_API: 'https://api.mycorp.internal' },
+      { API_KEY: testApiKey, NEXT_PUBLIC_API: testApiEndpoint },
       3500,
       'proj7',
       'dep7'
     );
 
     const prepared = await fs.readFile(path.join(t7Dir, preparedComposeFile), 'utf8');
-    const valid = prepared.includes('API_KEY: secret_api_val') && prepared.includes('NEXT_PUBLIC_API: https://api.mycorp.internal');
+    const valid = prepared.includes(`API_KEY: ${testApiKey}`) && prepared.includes(`NEXT_PUBLIC_API: ${testApiEndpoint}`);
 
     if (valid) {
       passed++;
@@ -454,7 +463,7 @@ services:
     const step1Missing = (detection1.missingRequiredEnvVars || []).length > 0;
 
     // Step 2: User provides env
-    const detection2 = await ProjectDetector.detect(t9Dir, { JWT_SECRET: 'my_validated_token_secret' });
+    const detection2 = await ProjectDetector.detect(t9Dir, { JWT_SECRET: process.env.TEST_JWT_SECRET || 'TEST_ONLY_JWT_SECRET' });
     const step2Missing = (detection2.missingRequiredEnvVars || []).length === 0;
 
     if (step1Missing && step2Missing) {
@@ -566,12 +575,12 @@ services:
 
       // 2. Configured detection
       const configured = await ProjectDetector.detect(fuzzDir, {
-        MONGODB_URI: 'mongodb+srv://testuser:testpass@cluster0.mongodb.net/madboytube',
-        ACCESS_TOKEN_SECRET: 'access_secret_123',
-        REFRESH_TOKEN_SECRET: 'refresh_secret_456',
+        MONGODB_URI: process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/deployhub_test',
+        ACCESS_TOKEN_SECRET: process.env.TEST_ACCESS_TOKEN_SECRET || 'TEST_ONLY_ACCESS_TOKEN',
+        REFRESH_TOKEN_SECRET: process.env.TEST_REFRESH_TOKEN_SECRET || 'TEST_ONLY_REFRESH_TOKEN',
         CLOUDINARY_CLOUD_NAME: 'testcloud',
-        CLOUDINARY_API_KEY: '1234567890',
-        CLOUDINARY_API_SECRET: 'cloudinary_secret_abc',
+        CLOUDINARY_API_KEY: 'TEST_ONLY_CLOUDINARY_KEY',
+        CLOUDINARY_API_SECRET: 'TEST_ONLY_CLOUDINARY_SECRET',
         CORS_ORIGIN: 'http://localhost:5173',
         VITE_API_BASE_URL: 'http://localhost:8000/api/v1',
       });

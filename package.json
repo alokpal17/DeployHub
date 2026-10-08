@@ -19,6 +19,7 @@
     "test:compose:preflight": "ts-node scripts/test-compose-preflight.ts",
     "test:detector": "ts-node scripts/test-universal-detector.ts",
     "test:matrix": "ts-node scripts/test-matrix.ts",
+    "scan:secrets": "ts-node scripts/security-scan.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

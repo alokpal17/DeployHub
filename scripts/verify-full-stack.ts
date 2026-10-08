@@ -99,9 +99,10 @@ async function main() {
   console.log(`   ✅ Project created: ${project1.name} (ID: ${project1._id})`);
 
   // Add environment variable with secret
+  const testApiKeyValue = process.env.TEST_API_KEY || 'TEST_ONLY_API_KEY_VALUE';
   await request(`${API_BASE}/projects/${project1._id}/env`, {
     method: 'POST',
-    body: { key: 'API_KEY', value: 'super-secret-production-token-12345', isSecret: true },
+    body: { key: 'API_KEY', value: testApiKeyValue, isSecret: true },
     headers: authHeaders,
   });
   await request(`${API_BASE}/projects/${project1._id}/env`, {

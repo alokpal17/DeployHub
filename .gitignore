@@ -1,6 +1,19 @@
 node_modules/
 dist/
-.env
-*.local
+build/
 .DS_Store
 /tmp/deployhub/
+
+# Environment and Secret Files
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+*.local
+*.pem
+*.key
+*.cert
+*.pfx
+*.pkcs12
+*.crt

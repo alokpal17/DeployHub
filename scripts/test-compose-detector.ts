@@ -336,10 +336,13 @@ CLOUDINARY_API_SECRET=
     // ─────────────────────────────────────────────────────────────
     // TEST 13: Secret Masking Security Verification
     // ─────────────────────────────────────────────────────────────
-    const sampleSecret = 'super_secret_mongo_password_9876';
-    const rawLogLine = `Connecting to mongodb://root:${sampleSecret}@mongo.cluster.local:27017/fuzztubedb with API_KEY=xyz123`;
-    const masked = DockerService.maskSecrets(rawLogLine, { MONGODB_URI: sampleSecret, API_KEY: 'xyz123' });
-    const pass13 = !masked.includes(sampleSecret) && !masked.includes('xyz123') && masked.includes('[HIDDEN');
+    const sampleSecret = process.env.TEST_SAMPLE_SECRET || 'TEST_ONLY_PLACEHOLDER_PASS';
+    const sampleApiKey = process.env.TEST_SAMPLE_API_KEY || 'TEST_ONLY_KEY_VAL';
+    const testUser = 'root';
+    const testAuthHost = '127.0.0.1:27017';
+    const rawLogLine = `Connecting to mongodb://${testUser}:${sampleSecret}@${testAuthHost}/fuzztubedb with API_KEY=${sampleApiKey}`;
+    const masked = DockerService.maskSecrets(rawLogLine, { MONGODB_URI: sampleSecret, API_KEY: sampleApiKey });
+    const pass13 = !masked.includes(sampleSecret) && !masked.includes(sampleApiKey) && masked.includes('[HIDDEN');
     recordResult(13, 'Secret Masking & Security Log Redaction', pass13, `Masked Log: "${masked}"`);
 
     // ─────────────────────────────────────────────────────────────
@@ -348,7 +351,7 @@ CLOUDINARY_API_SECRET=
     const prepResult = await DockerService.prepareComposeEnvironment(
       test12Dir,
       d12,
-      { MONGODB_URI: 'mongodb://localhost:27017/test', ACCESS_TOKEN_SECRET: 'testsecret' },
+      { MONGODB_URI: 'mongodb://127.0.0.1:27017/test', ACCESS_TOKEN_SECRET: 'TEST_ONLY_ACCESS_TOKEN' },
       4186
     );
     const overrideExists = (await fs.stat(path.join(test12Dir, prepResult.preparedComposeFile))).isFile();

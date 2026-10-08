@@ -121,9 +121,11 @@ services:
 `
     );
 
+    const testApiSecret = process.env.TEST_API_SECRET || 'TEST_ONLY_API_SECRET';
+
     // 2. Run Project Detection
     log('Step 1: Running Project Detection...');
-    const detection = await ProjectDetector.detect(baseTestDir, { API_SECRET: 'my_top_secret_token_123' });
+    const detection = await ProjectDetector.detect(baseTestDir, { API_SECRET: testApiSecret });
     if (detection.type !== 'docker-compose') {
       throw new Error(`Expected detection type "docker-compose", got "${detection.type}"`);
     }
@@ -138,7 +140,7 @@ services:
     await DockerService.prepareComposeEnvironment(
       baseTestDir,
       detection,
-      { API_SECRET: 'my_top_secret_token_123' },
+      { API_SECRET: testApiSecret },
       allocatedPort,
       'testproj',
       'testdep',
@@ -166,7 +168,7 @@ services:
         hostPort: allocatedPort,
         projectId: 'testproj',
         deploymentId: 'testdep',
-        envVars: { API_SECRET: 'my_top_secret_token_123' },
+        envVars: { API_SECRET: testApiSecret },
       },
       log
     );
